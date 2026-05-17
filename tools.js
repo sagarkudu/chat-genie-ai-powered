@@ -1,49 +1,76 @@
 export async function getCurrentWeather({ location }) {
-    const weather = {
-        location,
-        temperature: "75",
-        forecast: "sunny"
-    }
-    return JSON.stringify(weather)
-}
-
-export async function getLocation() {
   try {
-    const response = await fetch('https://ipapi.co/json/')
-    const text = await response.json()
-    return JSON.stringify(text)
+    const geoResponse = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${location}`
+    );
+
+    const geoData = await geoResponse.json();
+
+    if (!geoData.results || geoData.results.length === 0) {
+      return JSON.stringify({
+        error: "Location not found",
+      });
+    }
+
+    const place = geoData.results[0];
+
+    const weatherResponse = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current_weather=true`
+    );
+
+    const weatherData = await weatherResponse.json();
+
+    const weather = weatherData.current_weather;
+
+    return JSON.stringify({
+      city: place.name,
+      country: place.country,
+      temperature: `${weather.temperature}°C`,
+      windspeed: `${weather.windspeed} km/h`,
+      condition: getWeatherDescription(weather.weathercode),
+      day: weather.is_day ? "Day" : "Night",
+    });
   } catch (err) {
-    console.log(err)
+    console.error(err);
+
+    return JSON.stringify({
+      error: "Unable to fetch weather",
+    });
   }
 }
 
-export const tools = [
-    {
-        type: "function",
-        function: {
-            name: "getCurrentWeather",
-            description: "Get the current weather",
-            parameters: {
-                type: "object",
-                properties: {
-                    location: {
-                        type: "string",
-                        description: "The location from where to get the weather"
-                    }
-                },
-                required: ["location"]
-            }
-        }
+function getWeatherDescription(code) {
+  const weatherCodes = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    61: "Rain",
+    80: "Rain showers",
+    95: "Thunderstorm",
+  };
+
+  return weatherCodes[code] || "Unknown weather";
+}
+
+export const functions = [
+  {
+    function: getCurrentWeather,
+
+    parse: JSON.parse,
+
+    parameters: {
+      type: "object",
+
+      properties: {
+        location: {
+          type: "string",
+          description: "City name to get weather for",
+        },
+      },
+
+      required: ["location"],
     },
-    {
-        type: "function",
-        function: {
-            name: "getLocation",
-            description: "Get the user's current location",
-            parameters: {
-                type: "object",
-                properties: {}
-            }
-        }
-    },
-]
+  },
+];

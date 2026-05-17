@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="index.css" />
+  </head>
+
+  <body>
+    <main>
+      <!-- Conversation Bubbles -->
+      <section id="conversation" class="conversation-container">
+        <article class="ai-message">
+          <p>Hi there! How may I help you?</p>
+        </article>
+      </section>
+
+      <!-- Input Form -->
+      <form id="form" class="chatbot-input-container">
+        <input
+          type="text"
+          name="user-input"
+          placeholder="Type message here..."
+          id="user-input"
+          required
+        />
+        <button id="submit-btn" class="submit-btn">
+          <img
+            src="https://imgs.search.brave.com/QCPACkQlgHRfBYAftmWbNQ66j06kPVKSe7fvpRSSmws/rs:fit:0:180:1:0/g:ce/aHR0cHM6Ly9jZG4u/aWNvbnNjb3V0LmNv/bS9pY29uL3ByZW1p/dW0vcG5nLTI1Ni10/aHVtYi9zZW5kLWlj/b24tc3ZnLWRvd25s/b2FkLXBuZy02MzQz/OTU3LnBuZz9mPXdl/YnAmdz0xMjg"
+            class="send-btn-icon"
+          />
+        </button>
+      </form>
+    </main>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

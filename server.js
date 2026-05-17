@@ -1,69 +1,101 @@
 import dotenv from "dotenv";
-import { openai, supabase } from "./config.js";
-import { getCurrentWeather, getLocation, tools } from "./tools.js";
-
 dotenv.config();
 
-/**
- * Goal - build an agent that can get the current weather at my current location
- * and give me some localized ideas of activities I can do.
- */
+import express from "express";
+import cors from "cors";
+import OpenAI from "openai";
+import { functions } from "./tools.js";
 
-const availableFunctions = {
-  getCurrentWeather,
-  getLocation,
-};
+const app = express();
 
-async function agent(query) {
-  const messages = [
-    {
-      role: "system",
-      content:
-        "You are a helpful AI agent. Give highly specific answers based on the information you're provided. Prefer to gather information with the tools provided to you rather than giving basic, generic answers.",
-    },
-    { role: "user", content: query },
-  ];
+app.use(cors());
+app.use(express.json());
 
-  const MAX_ITERATIONS = 5;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
-    console.log(`Iteration #${i + 1}`);
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-1106",
-      messages,
-      tools,
+const messages = [
+  {
+    role: "system",
+    content: `
+You are an intelligent AI assistant.
+
+Your behavior:
+- Remember user information shared during conversation
+- Be conversational and natural
+- Refer back to earlier context when relevant
+- Avoid acting forgetful
+- Keep responses concise but smart
+- If user shares their name, remember it
+- If user shares interests/projects, remember them
+
+Always format responses using markdown.
+
+Use:
+- headings
+- bullets
+- numbering
+- spacing
+- code blocks
+
+Avoid giant paragraphs.
+`,
+  },
+];
+
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    messages.push({
+      role: "user",
+      content: message,
     });
 
-    const { finish_reason: finishReason, message } = response.choices[0];
-    const { tool_calls: toolCalls } = message;
-    console.log(toolCalls);
+    res.setHeader(
+      "Content-Type",
+      "text/plain; charset=utf-8"
+    );
 
-    messages.push(message);
+    res.setHeader(
+      "Transfer-Encoding",
+      "chunked"
+    );
 
-    if (finishReason === "stop") {
-      console.log(message.content);
-      console.log("AGENT ENDING");
-      return;
-    } else if (finishReason === "tool_calls") {
-      for (const toolCall of toolCalls) {
-        const functionName = toolCall.function.name;
-        const functionToCall = availableFunctions[functionName];
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        const functionResponse = await functionToCall(functionArgs);
-        console.log(functionResponse);
-        messages.push({
-          tool_call_id: toolCall.id,
-          role: "tool",
-          name: functionName,
-          content: functionResponse,
-        });
-      }
+    const stream =
+      await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+
+        stream: true,
+
+        messages,
+      });
+
+    let fullReply = "";
+
+    for await (const chunk of stream) {
+      const content =
+        chunk.choices[0]?.delta?.content || "";
+
+      fullReply += content;
+
+      res.write(content);
     }
+
+    messages.push({
+      role: "assistant",
+      content: fullReply,
+    });
+
+    res.end();
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).end("Server Error");
   }
-}
+});
 
-await agent("What's the current weather in my current location?");
-
-/**
-The current weather in New York is sunny with a temperature of 75°F.
- */
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
